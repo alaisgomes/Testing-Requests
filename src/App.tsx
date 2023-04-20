@@ -9,6 +9,8 @@ import Container from "@mui/material/Container";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import axios from "axios";
 import { Grid } from "@mui/material";
+import { useRef } from "react";
+import { post } from "./utils";
 
 const JSONParse = (obj: string | unknown) => {
   try {
@@ -25,14 +27,35 @@ const theme = createTheme();
 export default function CORSApp() {
   const [result, setResult] = React.useState<any>("Results...");
   const [isError, setError] = React.useState(false);
+  const form = useRef();
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (
+    event: React.MouseEvent<HTMLElement>,
+    action: string = "axios"
+  ) => {
     event.preventDefault();
-    const formdata = new FormData(event.currentTarget);
+
+    const formdata = new FormData(form.current);
     const data = JSONParse(formdata.get("data"));
+    const headers = JSONParse(formdata.get("headers"));
     const url = formdata.get("url") as string;
+
+    switch (action) {
+      case "fetch":
+        post(url, headers, data)
+          .then((response) => {
+            setError(false);
+            console.log(response);
+            setResult(JSON.stringify(response, null, 4));
+          })
+          .catch((error) => {
+            setError(true);
+            setResult(JSON.stringify(error, null, 4));
+          });
+    }
+
     axios
-      .post(url, data)
+      .post(url, headers, data)
       .then((response) => {
         setError(false);
         setResult(JSON.stringify(response.data, null, 4));
@@ -67,12 +90,7 @@ export default function CORSApp() {
               <Avatar sx={{ m: 1, bgcolor: "primary.main" }}>
                 <StorageIcon />
               </Avatar>
-              <Box
-                component="form"
-                onSubmit={handleSubmit}
-                noValidate
-                sx={{ mt: 1 }}
-              >
+              <Box component="form" noValidate sx={{ mt: 1 }} ref={form}>
                 <TextField
                   margin="normal"
                   required
@@ -82,6 +100,17 @@ export default function CORSApp() {
                   name="url"
                   autoComplete="url"
                   autoFocus
+                />
+                <TextField
+                  margin="normal"
+                  fullWidth
+                  id="headers"
+                  label="Request Headers"
+                  name="headers"
+                  multiline
+                  rows={5}
+                  type="data"
+                  defaultValue="{}"
                 />
                 <TextField
                   margin="normal"
@@ -96,12 +125,23 @@ export default function CORSApp() {
                   defaultValue="{}"
                 />
                 <Button
-                  type="submit"
                   fullWidth
                   variant="contained"
+                  name="action"
+                  value="fetch"
                   sx={{ mt: 3, mb: 2 }}
+                  onClick={(e) => handleSubmit(e, "fetch")}
                 >
-                  Submit
+                  Submit (fetch API)
+                </Button>
+                <Button
+                  fullWidth
+                  variant="contained"
+                  name="action"
+                  value="axios"
+                  onClick={(e) => handleSubmit(e, "axios")}
+                >
+                  Submit (Axios)
                 </Button>
               </Box>
             </Box>
@@ -115,7 +155,7 @@ export default function CORSApp() {
                 border: "1px solid",
                 borderColor: () => (isError ? "error.main" : "info.light"),
                 height: "100%",
-                wordWrap: "break-word"
+                wordWrap: "break-word",
               }}
             >
               <code>{result}</code>
